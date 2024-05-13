@@ -1,0 +1,264 @@
+import streamlit as st
+from streamlit_extras.add_vertical_space import add_vertical_space
+from fpdf import FPDF
+import os
+
+import logging
+import sys
+#
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
+
+st.markdown(
+    """
+    <style>
+    .widget-label, .stTextInput > div > div > div, .stButton> button {
+        color: #333333;
+        background-color: #87CEEB;
+        border-radius: 36px;
+    }
+    
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# Define sidebar background color
+sidebar_color = "#333333"  
+text_color = "#f0f8ff"  
+title_color = "#87CEEB"  
+title_font_size="40px"
+font_size="26px"
+st.markdown(f"""
+<style>
+[data-testid="stSidebar"] {{
+  background-color: {sidebar_color};
+  color: {text_color};
+}}
+
+[data-testid="stSidebar"] {{  /* Target sidebar markdown */
+  color: #b3cccc;  /* Blue for header specifically */
+  font-size: "26px"
+}}
+
+
+[data-testid="stSidebar"] h1 {{  /* Target sidebar title (h1) */
+  color: {title_color};
+  font-size: {title_font_size};
+}}
+
+</style>
+""", unsafe_allow_html=True)
+
+#Sidebar content
+with st.sidebar:
+    st.title('AI Diary')
+    st.markdown('Save Every Memory \n\n Remember Whenever You Need')
+    st.image('Source.jpeg',caption=' ASCII Corporation ')
+   
+    add_vertical_space(8)
+    st.write('Rights reserved \n ''@ [ASCII Corporation](https://www.ascii.ai/)')
+
+
+def open_file(file_path):
+    try:
+        os.startfile(file_path)
+    except AttributeError:
+        # For non-Windows systems
+        import subprocess
+        subprocess.call(['xdg-open', file_path])
+        
+
+def create_pdf(text_content, output_pdf_path):
+  # Create a new FPDF object
+  pdf = FPDF()
+
+  # Add a page
+  pdf.add_page()
+
+  # Set font
+  pdf.set_font("Arial", size = 12)
+
+  # Write text content to PDF
+  pdf.write(5, text_content)
+
+  # Save the PDF
+  pdf.output(output_pdf_path)
+
+
+def write_to_file(filename, text):
+  """Writes text to a file in 'w' (write) mode, overwriting existing content."""
+  with open(filename, 'w') as file:
+    file.write(text)
+
+def merge_and_overwrite(file1, file2, output_file=None):
+  """Merges the contents of two text files and overwrites the first file (or a specified output file).
+
+  Args:
+      file1 (str): Path to the first text file.
+      file2 (str): Path to the second text file.
+      output_file (str, optional): Path to the output file. Defaults to None, in which case file1 will be overwritten.
+  """
+  content2=file2
+  with open(file1, 'r') as f1, open(file2, 'r') as f2:
+    # Read content from both files
+    content1 = f1.read()
+    content2 = f2.read()
+
+  # Merge content with a newline in between
+  merged_content = content1 + "\n" + content2
+
+  # Determine output file
+  if output_file is None:
+    output_file = file1  # Overwrite the first file by default
+  else:
+    print(f"Merged content will be written to: {output_file}")
+
+  # Write merged content to output file
+  with open(output_file, 'w') as out_file:
+    out_file.write(merged_content)
+
+
+
+
+def load_text_file(filename):
+  """
+  This function loads the contents of a text file into a single string variable.
+
+  Args:
+      filename (str): The path to the text file.
+
+  Returns:
+      str: The contents of the text file as a single string.
+  """
+  
+  # Open the text file in read mode
+  with open(filename, 'r') as file:
+    # Read all the text content into a variable
+    text = file.read()
+  
+  # Return the loaded text content
+  return text
+
+
+
+def main():
+ 
+    from llama_index.core import SimpleDirectoryReader
+    
+    import streamlit as st
+    from pathlib import Path
+
+    st.title("Save Your Memories For Infinity")
+    desc=st.text_input("Provide A Better Introduction of You and Your Family : ",key="description")
+    DB=st.button("Add Introduction")
+    Data_path= r"C:\Users\Ahsan\Desktop\AI Diary\Data\Details.txt"
+
+    if DB:
+        write_to_file(Data_path, desc)
+    
+    
+    
+    if desc is not None:
+        memory=st.text_input("Share Your Memory Here : ")
+        MB=st.button("Add The Memory")
+        daily=r"C:\Users\Ahsan\Desktop\AI Diary\Daily\daily.txt"
+        if MB:
+            write_to_file(daily,memory)
+            merge_and_overwrite(Data_path,daily)
+                
+
+        from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
+        from llama_index.core import KnowledgeGraphIndex
+        #
+        from llama_index.core.graph_stores import SimpleGraphStore
+        from llama_index.core.storage.storage_context import StorageContext
+        from llama_index.llms.huggingface import HuggingFaceInferenceAPI
+        from langchain_community.embeddings.huggingface import HuggingFaceInferenceAPIEmbeddings
+        from llama_index.embeddings.langchain import LangchainEmbedding
+        from pyvis.network import Network
+        
+        HF_TOKEN = "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"
+        
+        llm = HuggingFaceInferenceAPI(
+            model_name="HuggingFaceH4/zephyr-7b-beta", token=HF_TOKEN
+        )
+    
+        embed_model = LangchainEmbedding(
+            HuggingFaceInferenceAPIEmbeddings(api_key=HF_TOKEN,model_name="sentence-transformers/all-MiniLM-L6-v2")
+        )
+
+        from llama_index.core import Settings
+
+        Settings.chunk_size=256
+        Settings.llm=llm
+        Settings.embed_model=embed_model
+        
+        documents = SimpleDirectoryReader(r"C:\Users\Ahsan\Desktop\AI Diary\Data").load_data()
+        index3 = VectorStoreIndex.from_documents(documents,
+                                                  llm=llm,
+                                                  chunk_size=256,
+                                                  embed_model=embed_model)
+        
+        #Accept User questions
+        query = st.text_input("Put Your Questions to Remember Your Memories : ")
+        QB=st.button("Get Your Memory")
+        if QB:
+            query_engine = index3.as_query_engine(include_text=True,
+                                                 response_mode ="tree_summarize",
+                                                 embedding_mode="hybrid",
+                                                 similarity_top_k=5,)
+
+            #
+            message_template =f"""<|system|>Please check the following context has any mention of the keywords provided or similar keywords in the Query. If then give direct and specific answer without backend and context details. Please do not add more words or any checking details. If not then, just say that It's not mentioned there and stop the process there. Please do not try to make up an answer.</s>
+            <|user|>
+            Question: {query}
+            Helpful Answer:
+            </s>"""
+#
+            response = query_engine.query(message_template)
+            #print(response)
+            st.write(response.response.split("<|assistant|>")[-1].strip())
+            
+            final=response.response.split("<|assistant|>")[-1].strip()
+            
+            output_pdf_path = r"C:\Users\Ahsan\Desktop\AI Diary\Response\Response.pdf"
+            create_pdf(final, output_pdf_path)
+            
+            docs=SimpleDirectoryReader(r"C:\Users\Ahsan\Desktop\AI Diary\Response").load_data()
+
+            graph_store = SimpleGraphStore()
+            storage_context = StorageContext.from_defaults(graph_store=graph_store)
+            
+            index2=KnowledgeGraphIndex.from_documents(documents=docs,
+                                                      max_triplets_per_chunk=2,
+                                                      llm=llm,
+                                                      chunk_size=256,
+                                                      embed_model=embed_model,
+                                                      storage_context=storage_context,
+                                                      include_embeddings=True)
+        
+           
+            from pyvis.network import Network
+
+            g = index2.get_networkx_graph()
+            net = Network(notebook=True,cdn_resources="local",directed=True)
+            net.from_nx(g)
+            net.show("graph.html")
+            net.save_graph("Knowledge_graph.html")
+            
+            # Path to your HTML file
+            path_to_html = r"C:\Users\Ahsan\Desktop\AI Diary\Knowledge_graph.html"  # Replace with your actual path
+
+
+            col1, col2, col3 = st.columns([4, 3, 3])
+            with col2:
+                if st.button("View The Graph"):
+                    open_file(path_to_html)
+        
+        
+        
+        
+if __name__=='__main__':
+    main()
